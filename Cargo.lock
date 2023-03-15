@@ -148,6 +148,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
 
 [[package]]
+name = "libtetris"
+version = "0.1.0"
+dependencies = [
+ "arrayvec",
+ "enum-map",
+ "enumset",
+ "rand",
+ "serde",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -217,6 +228,7 @@ dependencies = [
  "arrayvec",
  "enum-map",
  "enumset",
+ "libtetris",
  "pyo3",
  "rand",
  "serde",

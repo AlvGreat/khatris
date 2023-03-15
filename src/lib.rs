@@ -1,80 +1,89 @@
-use pyo3::prelude::*;
+use pyo3::{prelude::*, pyclass};
+use libtetris::*;
+use enumset::EnumSet;
+
+#[pyclass]
+struct PiecePlacement {
+    #[pyo3(get, set)]
+    inputs: Vec<String>,
+    #[pyo3(get, set)]
+    time: u32,
+    #[pyo3(get, set)]
+    piece_type: String,
+    #[pyo3(get, set)]
+    rotation_state: String,
+    #[pyo3(get, set)]
+    x: i32,
+    #[pyo3(get, set)]
+    y: i32,
+    #[pyo3(get, set)]
+    tspin: String,
+}
+
+#[pymethods]
+impl PiecePlacement {
+    #[new]
+    fn new(inputs: Vec<String>, time: u32, piece_type: String, rotation_state: String, x:i32, y:i32, tspin:String) -> Self {
+        PiecePlacement {inputs, time, piece_type, rotation_state, x, y, tspin }
+    }
+}
 
 
 #[pyfunction]
-fn hello_world() -> PyResult<String> {
-    Ok("Hello World".to_string())
+fn find_moves_py(board: [[bool; 10]; 40], piece: char, rotation_state: u8, x: i32, y: i32, t_spin_status:i8, mode: u8) -> PyResult<Vec<PiecePlacement>> {
+    // this initializes the game board using a boolean array
+    let game_board: Board = Board::new_with_state(board, EnumSet::all(), None, false, 0);
+    let piece = FallingPiece {
+        kind: PieceState(match piece {
+            'I' => Piece::I,
+            'O' => Piece::O,
+            'T' => Piece::T,
+            'L' => Piece::L,
+            'J' => Piece::J,
+            'S' => Piece::S,
+            'Z' => Piece::Z,
+            _ => Piece::O,
+        }, match rotation_state {
+            0 => RotationState::North,
+            1 => RotationState::South,
+            2 => RotationState::East,
+            3 => RotationState::West,
+            _ => RotationState::North,
+        }),
+        x: x,
+        y: y,
+        tspin: match t_spin_status {
+            0 => TspinStatus::None,
+            1 => TspinStatus::Mini,
+            2 => TspinStatus::Full,
+            _ => TspinStatus::None,
+        },
+    };  
+
+    let placements = find_moves(&game_board, piece, match mode {
+        0 => MovementMode::ZeroG,
+        1 => MovementMode::ZeroGComplete,
+        2 => MovementMode::TwentyG,
+        3 => MovementMode::HardDropOnly,
+        _ => MovementMode::ZeroG,
+    });
+
+    let mut py_placements = Vec::new();
+    
+    for i in 0..placements.len() {
+        let mut input_vec: Vec<String> = Vec::new();
+        for j in 0..placements[i].inputs.movements.len() {
+            input_vec.push(placements[i].inputs.movements[j].to_string());
+        }
+        let py_placement = PiecePlacement::new(input_vec, placements[i].inputs.time, placements[i].location.kind.0.to_string(), placements[i].location.kind.1.to_string(), placements[i].location.x, placements[i].location.y, placements[i].location.tspin.to_string());
+        py_placements.push(py_placement);
+    }
+    Ok(py_placements)
 }
 
-// A Python module implemented in Rust.
+/// A Python module implemented in Rust.
 #[pymodule]
 fn pylibtetris(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(hello_world, m)?)?;
+    m.add_function(wrap_pyfunction!(find_moves_py, m)?)?;
     Ok(())
 }
-
-
-// mod board;
-// mod lock_data;
-// mod moves;
-// mod piece;
-
-// #[cfg(feature = "fumen")]
-// mod fumen_conv;
-
-// #[cfg(feature = "pcf")]
-// mod pcf_conv;
-
-// pub use board::*;
-// pub use lock_data::*;
-// pub use moves::*;
-// pub use piece::*;
-
-// #[derive(Copy, Clone, Debug, Default, Hash, Eq, PartialEq)]
-// pub struct Controller {
-//     pub left: bool,
-//     pub right: bool,
-//     pub rotate_right: bool,
-//     pub rotate_left: bool,
-//     pub soft_drop: bool,
-//     pub hard_drop: bool,
-//     pub hold: bool,
-// }
-
-// impl serde::Serialize for Controller {
-//     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-//         serializer.serialize_u8(
-//             (self.left as u8) << 1
-//                 | (self.right as u8) << 2
-//                 | (self.rotate_left as u8) << 3
-//                 | (self.rotate_right as u8) << 4
-//                 | (self.hold as u8) << 5
-//                 | (self.soft_drop as u8) << 6
-//                 | (self.hard_drop as u8) << 7,
-//         )
-//     }
-// }
-
-// impl<'de> serde::Deserialize<'de> for Controller {
-//     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-//         struct ControllerDeserializer;
-//         impl serde::de::Visitor<'_> for ControllerDeserializer {
-//             type Value = Controller;
-//             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-//                 write!(formatter, "a byte-sized bit vector")
-//             }
-//             fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Controller, E> {
-//                 Ok(Controller {
-//                     left: (v >> 1) & 1 != 0,
-//                     right: (v >> 2) & 1 != 0,
-//                     rotate_left: (v >> 3) & 1 != 0,
-//                     rotate_right: (v >> 4) & 1 != 0,
-//                     hold: (v >> 5) & 1 != 0,
-//                     soft_drop: (v >> 6) & 1 != 0,
-//                     hard_drop: (v >> 7) & 1 != 0,
-//                 })
-//             }
-//         }
-//         deserializer.deserialize_u8(ControllerDeserializer)
-//     }
-// }
