@@ -1,3 +1,5 @@
+use std::fmt;
+
 use enum_map::Enum;
 use enumset::{enum_set, EnumSet, EnumSetType};
 use serde::{Deserialize, Serialize};
@@ -223,12 +225,29 @@ pub enum Piece {
     Z,
 }
 
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
+}
+
+
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum RotationState {
     North,
     South,
     East,
     West,
+}
+
+impl fmt::Display for RotationState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -239,6 +258,14 @@ pub enum TspinStatus {
     None,
     Mini,
     Full,
+}
+
+impl fmt::Display for TspinStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
 }
 
 impl RotationState {
@@ -461,6 +488,7 @@ pub enum PieceMovement {
     SonicDrop,
 }
 
+
 impl PieceMovement {
     pub fn apply(self, piece: &mut FallingPiece, board: &Board) -> bool {
         match self {
@@ -470,6 +498,14 @@ impl PieceMovement {
             PieceMovement::Cw => piece.cw(board),
             PieceMovement::SonicDrop => piece.sonic_drop(board),
         }
+    }
+}
+
+impl fmt::Display for PieceMovement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
     }
 }
 
