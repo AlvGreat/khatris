@@ -1,6 +1,7 @@
 import gymnasium as gym
 from gymnasium import spaces
 
+from env_helpers import *
 
 # documentation: https://gymnasium.farama.org/api/env/
 class KhatrisEnv(gym.Env):
