@@ -154,6 +154,7 @@ dependencies = [
  "arrayvec",
  "enum-map",
  "enumset",
+ "pyo3",
  "rand",
  "serde",
 ]

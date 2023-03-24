@@ -1,6 +1,7 @@
 use pyo3::{prelude::*, pyclass};
 use libtetris::*;
 use enumset::EnumSet;
+use std::collections::VecDeque;
 
 #[pyclass]
 #[derive(Clone)]
@@ -29,7 +30,62 @@ impl PiecePlacement {
     }
 }
 
-fn piece_str_to_enum(piece: char) -> Piece {
+#[pyclass]
+struct PyBoard {
+    field: [[bool; 10]; 40],
+    hold: char, 
+    next_pieces: [char; 6], 
+    b2b: bool, 
+    combo: u32
+}
+
+impl PyBoard {
+    fn new(mut board: Board) -> Self {
+        PyBoard {
+            field: board.get_field(), 
+            hold: piece_opt_enum_to_str(board.hold_piece),
+            next_pieces: board.get_queue_arr(),
+            b2b: board.b2b_bonus,
+            combo: board.combo
+        }
+    }
+}
+
+#[pyclass]
+struct PyLockResult {
+    placement_kind: u32,
+    b2b: bool,
+    perfect_clear: bool,
+    combo: u32,
+    garbage_sent: u32
+}
+
+impl PyLockResult {
+    fn new(lock_res: LockResult) -> Self {
+        PyLockResult {
+            placement_kind: match lock_res.placement_kind {
+                PlacementKind::None => 0,
+                PlacementKind::Clear1 => 1,
+                PlacementKind::Clear2 => 2,
+                PlacementKind::Clear3 => 3,
+                PlacementKind::Clear4 => 4,
+                PlacementKind::MiniTspin => 5,
+                PlacementKind::MiniTspin1 => 6,
+                PlacementKind::MiniTspin2 => 7,
+                PlacementKind::Tspin => 8,
+                PlacementKind::Tspin1 => 9,
+                PlacementKind::Tspin2 => 10,
+                PlacementKind::Tspin3 => 11
+            },
+            b2b: lock_res.b2b,
+            perfect_clear: lock_res.perfect_clear,
+            combo: lock_res.combo.unwrap_or(0),
+            garbage_sent: lock_res.garbage_sent
+        }
+    }
+}
+
+pub fn piece_str_to_enum(piece: char) -> Piece {
     match piece {
         'I' => Piece::I,
         'O' => Piece::O,
@@ -39,6 +95,19 @@ fn piece_str_to_enum(piece: char) -> Piece {
         'S' => Piece::S,
         'Z' => Piece::Z,
         _ => Piece::O,
+    }
+}
+
+pub fn piece_opt_enum_to_str(piece: Option<Piece>) -> char {
+    match piece {
+        Some(Piece::I) => 'I',
+        Some(Piece::O) => 'O',
+        Some(Piece::T) => 'T',
+        Some(Piece::L) => 'L',
+        Some(Piece::J) => 'J',
+        Some(Piece::S) => 'S',
+        Some(Piece::Z) => 'Z',
+        None => ' '
     }
 }
 
@@ -96,22 +165,32 @@ fn find_moves_py(board: [[bool; 10]; 40], piece: char, rotation_state: u8, x: i3
 // Accept the board and PiecePlacement data
 // Return information about what happens after the input piece is placed
 #[pyfunction]
-fn get_placement_res(board_arr: [[bool; 10]; 40], hold: char, bag_remain: [char; 6], b2b: bool, 
-                     combo: u32, piece: char, rotation_state: u8, x: i32, y: i32, t_spin_status:i8) -> PyResult<()> {
+fn get_placement_res(board_arr: [[bool; 10]; 40], hold: char, next_pieces: [char; 6], b2b: bool, combo: u32, 
+                     piece: char, rotation_state: u8, x: i32, y: i32, t_spin_status:i8) -> PyResult<(PyBoard, PyLockResult)> {
     let converted_hold: Option<Piece> = match hold {
         ' ' => None,
         _ => Some(piece_str_to_enum(hold))
     };
 
     // Convert a list of pieces in string format to an EnumSet of Piece enums
-    let mut piece_set = EnumSet::new();
-    let converted_pieces: Vec<Piece> = bag_remain.iter().map(|x| piece_str_to_enum(*x)).collect();
+    // let mut piece_set = EnumSet::new();
+    // let converted_pieces: Vec<Piece> = next_pieces.iter().map(|x| piece_str_to_enum(*x)).collect();
+    // for p in converted_pieces {
+    //     piece_set.insert(p);
+    // }
+
+    // Create a Deque from the next_pieces array for the Tetris board queue
+    // Note that we need to convert each character into the Piece enum
+    let mut piece_queue: VecDeque<Piece> = VecDeque::new();
+    let converted_pieces: Vec<Piece> = next_pieces.iter().map(|x| piece_str_to_enum(*x)).collect();
     for p in converted_pieces {
-        piece_set.insert(p);
+        piece_queue.push_back(p);
     }
 
     // Initialize board with existing stats and place the new piece in
-    let mut game_board: Board = Board::new_with_state(board_arr, piece_set, converted_hold, b2b, combo);
+    let mut game_board: Board = Board::new_with_state(board_arr, EnumSet::all(), converted_hold, b2b, combo);
+    game_board.set_queue(piece_queue);
+
     let placed_piece = FallingPiece {
         kind: PieceState(piece_str_to_enum(piece), match rotation_state {
             0 => RotationState::North,
@@ -130,11 +209,10 @@ fn get_placement_res(board_arr: [[bool; 10]; 40], hold: char, bag_remain: [char;
         },
     };
 
-    let _lock_res: LockResult = game_board.lock_piece(placed_piece);
-
-    // Need to convert the results back into format for Python
-
-    Ok(())
+    let lock_res: LockResult = game_board.lock_piece(placed_piece);
+    
+    // Convert the results back into format for Python
+    Ok((PyBoard::new(game_board), PyLockResult::new(lock_res)))
 }
 
 
@@ -142,5 +220,6 @@ fn get_placement_res(board_arr: [[bool; 10]; 40], hold: char, bag_remain: [char;
 #[pymodule]
 fn pylibtetris(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(find_moves_py, m)?)?;
+    m.add_function(wrap_pyfunction!(get_placement_res, m)?)?;
     Ok(())
 }
