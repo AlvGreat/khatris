@@ -1,4 +1,5 @@
 use pyo3::{prelude::*, pyclass};
+use pyo3::exceptions::PyValueError;
 use libtetris::*;
 use enumset::EnumSet;
 use std::collections::VecDeque;
@@ -267,8 +268,9 @@ fn find_moves_py(board: [[bool; 10]; 40], piece: char, rotation_state: u8, x: i3
 
 // Accept the board and PiecePlacement data
 // Return information about what happens after the input piece is placed
+// place_current_piece determines whether to place first piece in queue or the hold piece
 #[pyfunction]
-fn get_placement_res(py_board: PyBoard, piece: char, rotation_state: u8, x: i32, y: i32, t_spin_status: i8) -> PyResult<(PyBoard, PyLockResult)> {
+fn get_placement_res(py_board: PyBoard, place_current_piece: bool, rotation_state: u8, x: i32, y: i32, t_spin_status: i8) -> PyResult<(PyBoard, PyLockResult)> {
     let converted_hold: Option<Piece> = match py_board.hold {
         ' ' => None,
         _ => Some(piece_str_to_enum(py_board.hold))
@@ -296,10 +298,24 @@ fn get_placement_res(py_board: PyBoard, piece: char, rotation_state: u8, x: i32,
     // Now, we generate a new piece, add it to the queue, and then advance the queue
     let new_piece = game_board.generate_next_piece(&mut rand::thread_rng());
     game_board.add_next_piece(new_piece);
-    game_board.advance_queue();
+    
+    let piece: Piece;
+    if place_current_piece {
+        piece = match game_board.advance_queue() {
+            None => return Err(PyValueError::new_err("queue empty")),
+            Some(v) => v,
+        };
+    }
+    else {
+        piece = match game_board.hold_piece {
+            None => return Err(PyValueError::new_err("hold empty")),
+            Some(v) => v,
+        };
+        game_board.hold_piece = game_board.advance_queue();
+    }
 
     let placed_piece = FallingPiece {
-        kind: PieceState(piece_str_to_enum(piece), match rotation_state {
+        kind: PieceState(piece, match rotation_state {
             0 => RotationState::North,
             1 => RotationState::South,
             2 => RotationState::East,
