@@ -98,6 +98,11 @@ impl PyBoard {
 #[pyfunction]
 fn new_board_with_queue() -> PyBoard {
     let mut board = Board::new();
+
+    // When initializing a board, automatically start with a hold piece
+    // Note that this doesn't actually change the game
+    board.hold_piece = Some(board.generate_next_piece(&mut rand::thread_rng()));
+
     for _ in 0..6 {
         board.add_next_piece(board.generate_next_piece(&mut rand::thread_rng()));
     }
@@ -186,7 +191,7 @@ fn piece_str_to_enum(piece: char) -> Piece {
         'J' => Piece::J,
         'S' => Piece::S,
         'Z' => Piece::Z,
-        _ => Piece::O,
+        a => panic!("{}", a)
     }
 }
 
@@ -278,9 +283,10 @@ fn get_placement_res(py_board: PyBoard, place_current_piece: bool, rotation_stat
 
     // Convert a list of pieces in string format to an EnumSet of Piece enums for the bag
     let mut bag_set = EnumSet::new();
-    let converted_pieces: Vec<Piece> = py_board.bag.iter().map(|x| piece_str_to_enum(*x)).collect();
-    for p in converted_pieces {
-        bag_set.insert(p);
+    for x in py_board.bag {
+        if x != ' ' {
+            bag_set.insert(piece_str_to_enum(x));
+        }
     }
 
     // Create a Deque from the next_pieces array for the Tetris board queue

@@ -65,7 +65,7 @@ class KhatrisEnv(gym.Env):
 
     def get_action_list(self, separated=False):
         # get all possible placements from both current piece and hold piece
-        cur_piece_actions = find_moves_py(self.pyboard.field, self.pyboard.queue[0], 0, self.spawn_point[0], self.spawn_point[1], 0, 0) 
+        cur_piece_actions = find_moves_py(self.pyboard.field, self.pyboard.next_pieces[0], 0, self.spawn_point[0], self.spawn_point[1], 0, 0) 
         hold_piece_actions = []
         if self.pyboard.hold != ' ':
             hold_piece_actions = find_moves_py(self.pyboard.field, self.pyboard.hold, 0, self.spawn_point[0], self.spawn_point[1], 0, 0) 
@@ -91,15 +91,8 @@ class KhatrisEnv(gym.Env):
 
         # if there is only 1 action left at the spawn, we've topped out
         if len(cur_piece_actions) == 1 and cur_piece_actions[0].x == self.spawn_point[0] and cur_piece_actions[0].y == self.spawn_point[1] and \
-            len(hold_piece_actions) == 1 and hold_piece_actions[0].x == self.spawn_point[0] and hold_piece_actions[0].y == self.spawn_point[1]:
-            observation = {
-                'hold': self.hold,
-                'queue': self.queue,
-                'combo': self.combo,
-                'b2b': self.b2b,
-                'board': self.board,
-                'piece': self.piece,
-            }
+                len(hold_piece_actions) == 1 and hold_piece_actions[0].x == self.spawn_point[0] and hold_piece_actions[0].y == self.spawn_point[1]:
+            observation = self._get_obs()
             reward = -1000
             terminated = True
             info = {}
@@ -110,7 +103,7 @@ class KhatrisEnv(gym.Env):
                 action_taken = cur_piece_actions[action]
             else:
                 is_current_piece = False
-                action_taken = cur_piece_actions[action - len(cur_piece_actions)]
+                action_taken = hold_piece_actions[action - len(cur_piece_actions)]
             
             new_board, lock_res = get_placement_res(self.pyboard, is_current_piece, ROTATION_DICT[action_taken.rotation_state], action_taken.x, action_taken.y, TSPIN_DICT[action_taken.tspin])
             self.pyboard = new_board

@@ -1,5 +1,9 @@
 from pylibtetris.pylibtetris import *
 from rl_env import KhatrisEnv
+
+# import os
+# os.environ["RUST_BACKTRACE"] = "1"
+
 #print(pylibtetris.__)
 # help(pylibtetris)
 #print(pylibtetris.__dir__())
@@ -32,7 +36,7 @@ from rl_env import KhatrisEnv
 
 env = KhatrisEnv()
 observation, info = env.reset(seed=42)
-for _ in range(1000):
+for _ in range(100):
     found_action = False
     while(not found_action):
         action = env.action_space.sample()  # this is where you would insert your policy
