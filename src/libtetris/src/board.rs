@@ -243,6 +243,29 @@ impl<R: Row> Board<R> {
         hold
     }
 
+    pub fn get_queue_arr(&mut self) -> [char; 6] {
+        let vec: Vec<Piece> = self.next_pieces.iter().cloned().collect();
+        
+        // Initialize an array with null characters and populate it
+        let mut arr = ['\0'; 6]; 
+        for i in 0..6 {
+            arr[i] = match vec[i] {
+                Piece::I => 'I',
+                Piece::O => 'O',
+                Piece::T => 'T',
+                Piece::L => 'L',
+                Piece::J => 'J',
+                Piece::S => 'S',
+                Piece::Z => 'Z'
+            }
+        }
+        return arr;
+    }
+
+    pub fn set_queue(&mut self, new_queue: VecDeque<Piece>) {
+        self.next_pieces = new_queue;
+    }
+
     pub fn next_queue<'a>(&'a self) -> impl DoubleEndedIterator<Item = Piece> + 'a {
         self.next_pieces.iter().copied()
     }

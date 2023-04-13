@@ -11,5 +11,5 @@ class LockResult:
         self.garbage_sent = garbage_sent
         self.cleared_lines = cleared_lines
 
-PlacementKind = Enum('PlacementKind', ['Clear1', 'Clear2', 'Clear3', 'Clear4', 'MiniTspin', 'MiniTspin1', 
-                                        'MiniTspin2', 'Tspin', 'Tspin1', 'Tspin2', 'Tspin3',])
+# PlacementKind = Enum('PlacementKind', ['Clear1', 'Clear2', 'Clear3', 'Clear4', 'MiniTspin', 'MiniTspin1', 
+#                                         'MiniTspin2', 'Tspin', 'Tspin1', 'Tspin2', 'Tspin3',])
