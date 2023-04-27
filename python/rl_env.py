@@ -1,3 +1,4 @@
+import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 from pylibtetris.pylibtetris import *
@@ -34,6 +35,7 @@ class KhatrisEnv(gym.Env):
             'b2b': spaces.Discrete(2),
             'queue': spaces.MultiDiscrete([7 for _ in range(6)]),
         }
+        self.total_reward = 0
         self.observation_space = gym.spaces.Dict(s)
         self.action_space = spaces.Discrete(400)
 
@@ -46,11 +48,14 @@ class KhatrisEnv(gym.Env):
     def _get_obs(self):
         return {
             'board': self.pyboard.field,
-            'hold': self.pyboard.hold,
+            'hold': self.pyboard.get_hold_int(),
             'combo': self.pyboard.combo,
             'b2b': self.pyboard.b2b,
-            'queue': self.pyboard.next_pieces,
+            'queue': np.array(self.pyboard.get_next_pieces_int()),
         }
+    
+    def test_obs(self):
+        return self._get_obs()
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -64,11 +69,13 @@ class KhatrisEnv(gym.Env):
         return observation, info
 
     def get_action_list(self, separated=False):
+        # the hold should never be empty
+        if self.pyboard.hold == ' ':
+            print("Critical Error: Hold is empty")
+
         # get all possible placements from both current piece and hold piece
         cur_piece_actions = find_moves_py(self.pyboard.field, self.pyboard.next_pieces[0], 0, self.spawn_point[0], self.spawn_point[1], 0, 0) 
-        hold_piece_actions = []
-        if self.pyboard.hold != ' ':
-            hold_piece_actions = find_moves_py(self.pyboard.field, self.pyboard.hold, 0, self.spawn_point[0], self.spawn_point[1], 0, 0) 
+        hold_piece_actions = find_moves_py(self.pyboard.field, self.pyboard.hold, 0, self.spawn_point[0], self.spawn_point[1], 0, 0) 
 
         if separated: 
             return cur_piece_actions, hold_piece_actions
@@ -93,10 +100,15 @@ class KhatrisEnv(gym.Env):
         if len(cur_piece_actions) == 1 and cur_piece_actions[0].x == self.spawn_point[0] and cur_piece_actions[0].y == self.spawn_point[1] and \
                 len(hold_piece_actions) == 1 and hold_piece_actions[0].x == self.spawn_point[0] and hold_piece_actions[0].y == self.spawn_point[1]:
             observation = self._get_obs()
-            reward = -1000
+            reward = self.total_reward
             terminated = True
+            truncated = False
             info = {}
-            return observation, reward, terminated, info
+
+            # print when topped out
+            #print(self.pyboard)
+
+            return observation, reward, terminated, truncated, info
         else:
             is_current_piece = True
             if action < len(cur_piece_actions):
@@ -112,11 +124,13 @@ class KhatrisEnv(gym.Env):
             # isPerfectClear = 10 if lock_res.perfect_clear else 0
             # reward = lock_res.garbage_sent + lock_res.combo + isb2b + isPerfectClear
             reward = lock_res.garbage_sent
+            self.total_reward += reward
 
             observation = self._get_obs()
             terminated = False
+            truncated = False
             info = {}
-            return observation, reward, terminated, info
+            return observation, reward, terminated, truncated, info
     
         #return observation, reward, terminated (bool), False (bool), info (dict: auxiliary diagnostic info)
 

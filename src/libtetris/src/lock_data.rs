@@ -35,11 +35,14 @@ impl PlacementKind {
     pub fn garbage(self) -> u32 {
         use PlacementKind::*;
         match self {
-            None | MiniTspin | Tspin | Clear1 | MiniTspin1 => 0,
-            Clear2 | MiniTspin2 => 1,
-            Clear3 | Tspin1 => 2,
-            Clear4 | Tspin2 => 4,
-            Tspin3 => 6,
+            None | MiniTspin | Tspin => 0,
+            // give our agent a pity point for clearing anything :)
+            // scale the rest of the point values
+            Clear1 | MiniTspin1 => 1,
+            Clear2 | MiniTspin2 => 2,
+            Clear3 | Tspin1 => 3,
+            Clear4 | Tspin2 => 6,
+            Tspin3 => 9,
         }
     }
 

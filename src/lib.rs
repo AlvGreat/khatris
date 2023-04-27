@@ -67,6 +67,19 @@ impl PyBoard {
         PyBoard { field, hold, b2b, combo, next_pieces, bag }
     }
 
+    fn get_hold_int(&self) -> i32 {
+        return piece_str_to_int(self.hold)
+    }
+
+    fn get_next_pieces_int(&self) -> [i32; 6] {
+        return self.next_pieces
+            .iter()
+            .map(|x| piece_str_to_int(*x))
+            .collect::<Vec<i32>>()
+            .try_into()
+            .unwrap();
+    }
+    
     fn __str__(&self) -> String {
         let mut board_str = String::new();
         
@@ -99,13 +112,16 @@ impl PyBoard {
 fn new_board_with_queue() -> PyBoard {
     let mut board = Board::new();
 
-    // When initializing a board, automatically start with a hold piece
-    // Note that this doesn't actually change the game
-    board.hold_piece = Some(board.generate_next_piece(&mut rand::thread_rng()));
-
     for _ in 0..6 {
         board.add_next_piece(board.generate_next_piece(&mut rand::thread_rng()));
     }
+
+    // When initializing a board, automatically start with a hold piece
+    // Note that this doesn't actually change the game
+    board.hold_piece = board.advance_queue();
+    let new_piece = board.generate_next_piece(&mut rand::thread_rng());
+    board.add_next_piece(new_piece);
+
     new_pyboard(board)
 }
 
@@ -217,6 +233,19 @@ fn piece_opt_enum_to_str(piece: Option<Piece>) -> char {
         Some(Piece::S) => 'S',
         Some(Piece::Z) => 'Z',
         None => ' '
+    }
+}
+
+fn piece_str_to_int(piece: char) -> i32 {
+    match piece {
+        'I' => 0,
+        'O' => 1,
+        'T' => 2,
+        'L' => 3,
+        'J' => 4,
+        'S' => 5,
+        'Z' => 6,
+        a => panic!("{}", a)
     }
 }
 
