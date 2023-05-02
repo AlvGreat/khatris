@@ -60,6 +60,8 @@ class KhatrisEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         
+        self.total_reward = 0
+        
         # create a new board
         b = new_board_with_queue()
         self.pyboard = b
@@ -104,10 +106,6 @@ class KhatrisEnv(gym.Env):
             terminated = True
             truncated = False
             info = {}
-
-            # print when topped out
-            #print(self.pyboard)
-
             return observation, reward, terminated, truncated, info
         else:
             is_current_piece = True

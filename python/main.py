@@ -3,7 +3,13 @@ from rl_env import KhatrisEnv
 from DQN import DQNAgent
 from gymnasium.wrappers import FlattenObservation
 import numpy as np
+import tensorflow as tf
 
+gpu_devices = tf.config.experimental.list_physical_devices('GPU')
+for device in gpu_devices:
+    tf.config.experimental.set_memory_growth(device, True)
+    
+    
 # import os
 # os.environ["RUST_BACKTRACE"] = "1"
 
@@ -53,6 +59,7 @@ env = FlattenObservation(env)
 # env.close()
 # Set the random seed for reproducibility
 seed = 123
+env.reset(seed=seed)
 np.random.seed(seed)
 
 # Define the state and action spaces
@@ -61,10 +68,11 @@ action_size = env.action_space.n
 
 # Instantiate the DQN agent
 agent = DQNAgent(state_size, action_size)
+#agent.load("tetris-dqn.h5")
 
 # Train the agent
-n_episodes = 100
-batch_size = 32
+n_episodes = 500
+batch_size = 25
 
 for e in range(n_episodes):
     state, info = env.reset(seed=seed)
@@ -84,6 +92,8 @@ for e in range(n_episodes):
         score += reward
         if done:
             print("episode: {}/{}, score: {}".format(e, n_episodes, score))
+            if e % 200 == 0:
+                agent.save(f'tetris-dqp-{e}.h5')
             break
     if len(agent.memory) > batch_size:
         agent.replay(batch_size)

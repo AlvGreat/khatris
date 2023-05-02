@@ -2,6 +2,10 @@ import random
 import numpy as np
 import tensorflow as tf
 
+gpu_devices = tf.config.experimental.list_physical_devices('GPU')
+for device in gpu_devices:
+    tf.config.experimental.set_memory_growth(device, True)
+    
 class DQNAgent:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
@@ -13,6 +17,7 @@ class DQNAgent:
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.model = self._build_model()
+    
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
@@ -49,7 +54,16 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def load(self, name):
-        self.model.load_weights(name)
+        model = tf.keras.models.Sequential()
+        model.add(tf.keras.layers.Dense(1024, input_dim=self.state_size, activation='relu')) #can change the number of input features)
+        model.add(tf.keras.layers.Dense(1024, activation='relu'))
+        model.add(tf.keras.layers.Dense(512, activation='relu'))
+        model.add(tf.keras.layers.Dense(self.action_size, activation='softmax'))
+        
+        model.load_weights(name)
+        
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate))
+        self.model = model
 
     def save(self, name):
         self.model.save_weights(name)
