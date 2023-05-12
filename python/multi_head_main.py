@@ -1,5 +1,5 @@
 from pylibtetris.pylibtetris import *
-from rl_env import KhatrisEnv
+from rl_env_flat import KhatrisEnv
 from multi_head_DQN import MultiHeadAgent
 from gymnasium.wrappers import FlattenObservation
 import numpy as np
@@ -44,7 +44,6 @@ for device in gpu_devices:
 # print(new_board, lock_res)
 
 env = KhatrisEnv()
-env = FlattenObservation(env)
 # observation, info = env.reset(seed=42)
 # for _ in range(100):
 #     found_action = False
@@ -63,7 +62,8 @@ env.reset(seed=seed)
 np.random.seed(seed)
 
 # Define the state and action spaces
-state_size = env.observation_space.shape[0]
+state_size = env._get_obs().shape[0]
+print(state_size)
 action_size = env.action_space.n
 
 # Instantiate the DQN agent

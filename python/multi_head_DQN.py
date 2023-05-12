@@ -83,11 +83,9 @@ class MultiHeadAgent:
         
         x_mask = np.zeros(10, dtype=int)
         x_mask[x_values] = 1
-        x_mask[x_mask == 0] = np.iinfo(np.int64).min
                     
         y_mask = np.zeros(25, dtype=int)
         y_mask[y_values] = 1
-        y_mask[y_mask == 0] = np.iinfo(np.int64).min
 
         r_indices = [i for i in r_values]
         for idx, value in enumerate(r_values):
@@ -95,7 +93,6 @@ class MultiHeadAgent:
             
         r_mask = np.zeros(4, dtype=int)
         r_mask[r_indices] = 1
-        r_mask[r_mask==0] = np.iinfo(np.int64).min
 
         p_mask = np.ones(2, dtype=int)
         if piece_chosen:
@@ -103,11 +100,11 @@ class MultiHeadAgent:
         else:
             if (len(new_piece_idx) == 2) :
                 if (new_piece_idx[1] - new_piece_idx[0] == 1):
-                    p_mask[0] = np.iinfo(np.int64).min
+                    p_mask[0] = 0
                 else:
                     p_indices.append(0)
                 if (len(valid_actions) - 1 == new_piece_idx[1]):
-                    p_mask[1] = np.iinfo(np.int64).min
+                    p_mask[1] = 0
                 else:
                     p_indices.append(1)
 
@@ -122,31 +119,39 @@ class MultiHeadAgent:
         best_r = None
 
         best_p = np.argmax(p_act_values)
-        for idx, action in enumerate(valid_actions):
-            if action.piece_type != p_values[best_p]:
-                del valid_actions[idx]
+        if len(p_values) == 1:
+            p_values.append(p_values[0])
+        valid_actions = list(filter(lambda act: act.piece_type == p_values[best_p], valid_actions))
         
         x_mask, _, _, _ = self._get_action_masks(valid_actions, True)
         x_act_values = x_act_values*x_mask[0]
+        x_act_values[x_act_values == 0] = np.iinfo(np.int64).min
         best_x = np.argmax(x_act_values)
-        for idx, action in enumerate(valid_actions):
-            if action.x != best_x:
-                del valid_actions[idx]
-        
+        valid_actions = list(filter(lambda act: act.x == best_x, valid_actions))
+
         _, y_mask, _, _ = self._get_action_masks(valid_actions, True)
         y_act_values = y_act_values*y_mask[0]
+        y_act_values[y_act_values == 0] = np.iinfo(np.int64).min
         best_y = np.argmax(y_act_values)
-        for idx, action in enumerate(valid_actions):
-            if action.y != best_y:
-                del valid_actions[idx]
-        
+        valid_actions = list(filter(lambda act: act.y == best_y, valid_actions))
+
         _, _, r_mask, _ = self._get_action_masks(valid_actions, True)
         r_act_values = r_act_values*r_mask[0]
+        r_act_values[r_act_values == 0] = np.iinfo(np.int64).min
         best_r = np.argmax(r_act_values)
+        
+
+        act = None
 
         for idx, action in enumerate(valid_actions):
             if action.x == best_x and action.y == best_y and action.rotation_state == ROTATION_INDICES[best_r] and action.piece_type == p_values[best_p]:
-                return idx
+                act = idx
+
+        if act == None:
+            for idx, action in enumerate(valid_actions):    
+                print(f'Action {idx}: {action}')
+        return act
+            
         
     
 
@@ -155,9 +160,13 @@ class MultiHeadAgent:
         if np.random.rand() <= self.epsilon:
             return random.randint(0, len(valid_actions) - 1)
         x_act_values = self.xCoordHead.predict(state, verbose=0)[0] * x_mask[0]
+        x_act_values[x_act_values == 0] = np.iinfo(np.int64).min 
         y_act_values = self.yCoordHead.predict(state, verbose=0)[0] * y_mask[0]
+        y_act_values[y_act_values == 0] = np.iinfo(np.int64).min
         r_act_values = self.rotationHead.predict(state, verbose=0)[0] * r_mask[0]
+        r_act_values[r_act_values == 0] = np.iinfo(np.int64).min
         p_act_values = self.blockHead.predict(state, verbose=0)[0] * p_mask[0]
+        p_act_values[p_act_values == 0] = np.iinfo(np.int64).min
         return self._get_best_valid_action(x_act_values, y_act_values, r_act_values, p_act_values, p_mask[1], valid_actions)
         
 
@@ -192,7 +201,7 @@ class MultiHeadAgent:
             head.load_weights(names[idx])
             head.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate))
             heads.append(head)
-        self.xCoordHead, self.yCoordHead, self.rotationHead, self.blockHead = heads 
+        self.xCoordHead, self.yCoordHead, self.rotationHead, self.blockHead = heads
 
     def save(self, names):
         self.xCoordHead.save_weights(names[0])
