@@ -31,13 +31,18 @@ state_size = env.get_obs().shape[0]
 action_size = env.action_space.n
 
 # Instantiate the DQN agent
-agent = DQNAgent(state_size, action_size)
-# agent = ConvolutedDQNAgent(state_size, action_size)
+# agent = DQNAgent(state_size, action_size)
+agent = ConvolutedDQNAgent(state_size, action_size)
 
+
+def reshape_for_cdqn(state):
+    board = np.reshape(state[:BOARD_SIZE], (1, 40, 10, 1))
+    other_stats = np.reshape(state[BOARD_SIZE:], (1, 9))
+    return [board, other_stats]
 
 for e in range(N_EPISODES):
     state, info = env.reset(seed=seed)
-    state = np.reshape(state, [1, state_size])
+    state = reshape_for_cdqn(state)
     done = False
     score = 0
     while not done:
@@ -50,7 +55,8 @@ for e in range(N_EPISODES):
         action = agent.act(state, max_action)
         next_state, reward, done, truncated, info = env.step(action)
         
-        next_state = np.reshape(next_state, [1, state_size])
+        # fix this later pls 
+        next_state = reshape_for_cdqn(next_state)
 
         agent.remember(state, action, reward, next_state, done)
         state = next_state

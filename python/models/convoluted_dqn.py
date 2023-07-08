@@ -2,7 +2,7 @@ import random
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras.layers import (
+from keras.layers import (
     Input,
     Conv2D,
     Dense,
@@ -11,8 +11,8 @@ from tensorflow.keras.layers import (
     AveragePooling2D,
     Concatenate,
 )
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
+from keras.models import Model
+from keras.optimizers import Adam
 
 gpu_devices = tf.config.experimental.list_physical_devices("GPU")
 for device in gpu_devices:
@@ -33,7 +33,7 @@ class ConvolutedDQNAgent:
 
     def _build_model(self):
         # Create and compile model
-        model = init_model()
+        model = init_model(self.action_size)
         model.compile(
             loss="mse", optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate)
         )
@@ -46,8 +46,6 @@ class ConvolutedDQNAgent:
         if np.random.rand() <= self.epsilon:
             return random.randrange(max_action)
         act_values = self.model.predict(state, verbose=0)
-
-        print("DEBUG: This isn't running rn")
 
         best_actions = np.argsort(act_values[0])[::-1]
         for action in best_actions:
@@ -70,7 +68,7 @@ class ConvolutedDQNAgent:
 
     def load(self, name):
         # Load saved weights before compiling model
-        model = init_model()
+        model = init_model(self.action_size)
         model.load_weights(name)
         model.compile(
             loss="mse", optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate)
@@ -83,17 +81,17 @@ class ConvolutedDQNAgent:
         self.model.save_weights(name)
 
 
-def init_model():
+def init_model(action_size):
     BOARD_SIZE = (40, 10)
     # hold, combo, b2b, 6 pieces in queue
     OTHER_VAR_SIZE = 9
 
     # Create input layers for the board and other variables separately
-    x1 = Input(shape=BOARD_SIZE + (1,))
-    x2 = Input(shape=(OTHER_VAR_SIZE,))
+    input1 = Input(shape=BOARD_SIZE + (1,))
+    input2 = Input(shape=(OTHER_VAR_SIZE,))
 
     # CNN layers for the board
-    x1 = Conv2D(32, (3, 3), activation="relu", padding="same")(x1)
+    x1 = Conv2D(32, (3, 3), activation="relu", padding="same")(input1)
     x1 = AveragePooling2D()(x1)
     x1 = Dropout(0.2)(x1)
 
@@ -113,13 +111,13 @@ def init_model():
     x1 = Dense(128, activation="relu")(x1)
 
     # Combine board after CNN with rest of observation data
-    merged = Concatenate(axis=1)([x1, x2])
+    merged = Concatenate(axis=1)([x1, input2])
 
     # Now, we use all observation data in fully-connected layers
     merged = Dense(96, activation="relu")(merged)
     merged = Dense(48, activation="relu")(merged)
-    merged = Dense(1, activation="linear")(merged)
+    merged = Dense(action_size, activation="softmax")(merged)
 
     # Create the final model
-    model = Model(inputs=[x1, x2], outputs=merged)
+    model = Model(inputs=[input1, input2], outputs=merged)
     return model
