@@ -4,7 +4,7 @@ from gymnasium.wrappers import FlattenObservation
 
 from pylibtetris.pylibtetris import *
 
-from rl_env import KhatrisEnv
+from rl_env_flat import KhatrisEnv
 from models.dqn import DQNAgent
 from models.convoluted_dqn import ConvolutedDQNAgent
 
@@ -16,10 +16,10 @@ for device in gpu_devices:
 # Parameters for training the agent
 N_EPISODES = 500
 BATCH_SIZE = 25
+BOARD_SIZE = 40*10
 
 # Initialize environment and flatten the observations from it
 env = KhatrisEnv()
-env = FlattenObservation(env)
 
 # Set the random seed for reproducibility
 seed = 123
@@ -27,7 +27,7 @@ env.reset(seed=seed)
 np.random.seed(seed)
 
 # Define the state and action spaces
-state_size = env.observation_space.shape[0]
+state_size = env.get_obs().shape[0]
 action_size = env.action_space.n
 
 # Instantiate the DQN agent
@@ -42,12 +42,16 @@ for e in range(N_EPISODES):
     score = 0
     while not done:
         all_actions = env.get_action_list()
-        # length of action array represents the total number of actions possible
+        
+        # Length of action array represents the total number of actions possible
         max_action = len(all_actions)
-        # we pass in the maximum number of actions for action masking
+        
+        # Pass in the maximum number of actions for action masking
         action = agent.act(state, max_action)
         next_state, reward, done, truncated, info = env.step(action)
+        
         next_state = np.reshape(next_state, [1, state_size])
+
         agent.remember(state, action, reward, next_state, done)
         state = next_state
         score += reward
